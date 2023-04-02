@@ -12,7 +12,7 @@ from torch.cuda.amp import GradScaler
  
 device = "cuda" if torch.cuda.is_available() else "cpu"
 class Net(nn.Module):
-  def __init__(self, input_size, output_size, hidden_size = 64, layer_num = 4):
+  def __init__(self, input_size, output_size, hidden_size = 800, layer_num = 3):
     super(Net, self).__init__()
     self.layer_num = layer_num
     self.input_size = input_size
@@ -50,30 +50,33 @@ train_dataloader = DataLoader(dataset=train_data, batch_size=batch_size, shuffle
 test_data = torchvision.datasets.MNIST(root = "./data", train = False, transform = transform, download = True)
 test_dataloader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
+
 datasize = len(train_data)
 n_iterations = math.ceil(datasize / batch_size)
 
-
-
 datapoints = [[], []]
 for epoch in range(epochs):
+  correct = 0
+  avg_loss = 0
   for i, [images, labels] in enumerate(train_dataloader):
     optimizer.zero_grad()
-    images = images.view(batch_size, -1)
+    images = images.view(-1, input_size)
     images = images.to(device)
     labels = labels.to(device)
     with autocast():
       pred = model(images)
       loss = criterion(pred, labels)
+
     scaler.scale(loss).backward()
     scaler.step(optimizer)
     scaler.update()
+    avg_loss += loss.item() * images.shape[0]
     if (i + 1) % 100 == 0:
       print(f"Loss: {loss:.7f} [iteration {i + 1}/{n_iterations} in epoch {epoch + 1}/{epochs}]")
-      datapoints[0].append(n_iterations * epoch + i + 1)
-      datapoints[1].append(loss.item())
-    
-      
+  avg_loss /= datasize   
+
+  datapoints[0].append(epoch + 1)
+  datapoints[1].append(avg_loss)
   if (epoch + 1) % 10 == 0:
     checkpoint = {
         'epoch': epoch,
@@ -89,7 +92,7 @@ plt.style.use('classic')
 fig = plt.figure()
 loss_fig = fig.add_subplot(1,1,1)
 loss_fig.set_title("Loss curve")
-loss_fig.set_xlabel("Iterations")
+loss_fig.set_xlabel("Epochs")
 loss_fig.set_ylabel("Loss")
 loss_fig.plot(datapoints[0], datapoints[1])
 plt.show()
