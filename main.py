@@ -56,7 +56,6 @@ n_iterations = math.ceil(datasize / batch_size)
 
 datapoints = [[], []]
 for epoch in range(epochs):
-  correct = 0
   avg_loss = 0
   for i, [images, labels] in enumerate(train_dataloader):
     optimizer.zero_grad()
